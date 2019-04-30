@@ -25,61 +25,69 @@ func (o ociMotelTransport) Name() string {
 	return "ocimotel"
 }
 
-// NOTE - the transport interface is defined in types/types.go.
+func splitReference(ref string) (fullname, server string, port int, err error) {
+	port = 8080
+	err = nil
+	if ref[0] == '/' {
+		fullname = ref[1:]
+		return
+	}
+	fields := strings.SplitN(ref, "/", 2)
+	subFields := strings.Split(fields[0], ":")
+	if len(subFields) > 2 {
+		err = fmt.Errorf("Bad server:port")
+		return
+	}
+	server = subFields[0]
+	if len(subFields) == 2 {
+		port, err = strconv.Atoi(subFields[1])
+		if err != nil {
+			return
+		}
+		if port < 1 || port > 65535 {
+			err = fmt.Errorf("bad port %d", port)
+			return
+		}
+	}
+	fullname = fields[1]
+	return
+}
 
-// OPEN TO SUGGESTIONS.  I think we want server to be optional, with no server
-// meaning query the cluster (todo).  That makes doing //server/rest difficult,
-// because we will have a hard time deciding whether the first part of the nae
-// is a server or a name.  So I'm saying we separate server from name with a :.
+// NOTE - the transport interface is defined in types/types.go.
 // Valid uris are:
-//    omot://:name1/name2/tag
-//    omot://server:/name1/name2/name3/tag
-//    omot://server:port:/name1/name2/name3/tag
+//    ocimotel:///name1/name2/tag
+//    ocimotel://server/name1/name2/name3/tag
+// The tag can be separated by either / or :
+//    ocimotel://server:port/name1/name2/name3/tag
+//    ocimotel://server:port/name1/name2/name3:tag
 // So the reference passed in here would be e.g.
-//    //:name1/name2/tag
-//    //server:port:name1/name2/tag
+//    ///name1/name2/tag
+//    //server:port/name1/name2/tag
 func (s ociMotelTransport) ParseReference(reference string) (types.ImageReference, error) {
 	if !strings.HasPrefix(reference, "//") {
 		return nil, errors.Errorf("ocimotel: image reference %s does not start with //", reference)
 	}
-	fields := strings.SplitN(reference, ":", 3)
-	port := -1
-	server := ""
-	fullname := ""
-	empty := ociMotelReference{}
-	if len(fields) < 2 {
-		return empty, fmt.Errorf("ocimotel: bad image reference format: %s", reference)
+	fields := strings.Split(reference, "/")
+	fullname, server, port, err := splitReference(reference[2:])
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed parsing reference: '%s'", reference)
 	}
-	if fields[0] != "//" {
-		server = fields[0][2:]
+
+	// support : for tag separateion
+	var name, tag string
+	fields = strings.Split(fullname, ":")
+	if len(fields) != 2 || len(fields[0]) == 0 || len(fields[1]) == 0 {
+		return nil, fmt.Errorf("No tag specified in '%s'", fullname)
 	}
-	if len(fields) == 3 {
-		port, err := strconv.Atoi(fields[1])
-		if err != nil {
-			return empty, errors.Wrapf(err, "ocimotel: bad port in %s", reference)
-		}
-		if port < 1 || port > 65535 {
-			return empty, fmt.Errorf("ocimotel: bad port in %s", reference)
-		}
-		fullname = fields[2]
-	} else {
-		fullname = fields[1]
-	}
-	nameFields := strings.Split(fullname, "/")
-	numFields := len(nameFields)
-	if numFields > 1 && nameFields[0] == "" {
-		nameFields = nameFields[1:]
-		numFields--
-	}
-	if numFields < 2 {
-		return empty, fmt.Errorf("ocimotel: no tag or digest in %s", reference)
-	}
+	name = fields[0]
+	tag = fields[1]
+
 	return ociMotelReference{
 		server:   server,
 		port:     port,
 		fullname: fullname,
-		name:     strings.Join(nameFields[:numFields-1], "/"),
-		tag:      nameFields[numFields-1],
+		name:     name,
+		tag:      tag,
 	}, nil
 }
 
