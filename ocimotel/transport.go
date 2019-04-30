@@ -67,6 +67,10 @@ func (s ociMotelTransport) ParseReference(reference string) (types.ImageReferenc
 	}
 	nameFields := strings.Split(fullname, "/")
 	numFields := len(nameFields)
+	if numFields > 1 && nameFields[0] == "" {
+		nameFields = nameFields[1:]
+		numFields--
+	}
 	if numFields < 2 {
 		return empty, fmt.Errorf("ocimotel: no tag or digest in %s", reference)
 	}
