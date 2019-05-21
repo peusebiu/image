@@ -110,7 +110,7 @@ func (ref ociMotelReference) Transport() types.ImageTransport {
 func (ref ociMotelReference) StringWithinTransport() string {
 	port := ""
 	if ref.port != -1 {
-		port = fmt.Sprintf("%s:", ref.port)
+		port = fmt.Sprintf("%d:", ref.port)
 	}
 	return fmt.Sprintf("//%s:%s%s", ref.server, port, ref.fullname)
 }
