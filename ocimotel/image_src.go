@@ -44,7 +44,7 @@ func (o *ociMotelImageSource) GetManifest(ctx context.Context, instanceDigest *d
 }
 
 func (o *ociMotelImageSource) GetBlob(ctx context.Context, info types.BlobInfo, cache types.BlobInfoCache) (io.ReadCloser, int64, error) {
-	digest := info.Digest.Encoded()
+	digest := info.Digest.String()
 	return o.s.GetLayer(digest)
 }
 

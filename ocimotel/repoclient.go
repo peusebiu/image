@@ -98,6 +98,7 @@ func (o *OciRepo) PutManifest(body []byte) error {
 	if err != nil {
 		return errors.Wrapf(err, "Error creating request for %s", uri)
 	}
+	request.Header.Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
 	resp, err := client.Do(request)
 	if err != nil {
 		return errors.Wrapf(err, "Error posting manifest")
@@ -163,29 +164,29 @@ func (o *OciRepo) StartLayer() (string, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 201 {
+	if resp.StatusCode != 202 {
 		return "", fmt.Errorf("Server returned an error %d", resp.StatusCode)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	_, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return "", errors.Wrapf(err, "Error reading response body for %s", name)
 	}
 
-	var ret layerPostResult
-	err = json.Unmarshal(body, &ret)
-	if err != nil {
+	loc := resp.Header.Get("Location")
+	if loc == "" {
 		return "", errors.Wrap(err, "Failed decoding response")
 	}
 
-	return ret.Location, nil
+	return loc, nil
 }
 
 // @path is the uuid upload path returned by the server to our Post request.
 // @stream is the data source for the layer.
 // Return the digest and size of the layer that was uploaded.
-func (o *OciRepo) CompleteLayer(path string, stream io.Reader) (digest.Digest, int64, error) {
+func (o *OciRepo) CompleteLayer(path string, stream io.Reader, size int64) (digest.Digest, int64, error) {
 	uri := fmt.Sprintf("%s%s", o.url, path)
+	// using "chunked" upload
 	client := &http.Client{}
 	digester := sha256.New()
 	hashReader := io.TeeReader(stream, digester)
@@ -193,35 +194,55 @@ func (o *OciRepo) CompleteLayer(path string, stream io.Reader) (digest.Digest, i
 	if err != nil {
 		return "", -1, errors.Wrap(err, "Failed opening Patch request")
 	}
+	req.ContentLength = size
+	req.Header.Set("Content-Type", "application/octet-stream")
+	req.Header.Set("Content-Range", fmt.Sprintf("%d-%d", 0, size))
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", -1, errors.Wrapf(err, "Failed posting request %v", req)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != 204 {
+	if resp.StatusCode != 202 {
 		return "", -1, fmt.Errorf("Server returned an error %d", resp.StatusCode)
 	}
 
 	ourDigest := fmt.Sprintf("%x", digester.Sum(nil))
-	uri = fmt.Sprintf("%s%s?digest=%s", o.url, path, ourDigest)
+	d := digest.NewDigestFromEncoded(digest.SHA256, ourDigest)
+	uri = fmt.Sprintf("%s%s?digest=%s", o.url, path, d.String())
 	req, err = http.NewRequest("PUT", uri, nil)
 	if err != nil {
 		return "", -1, errors.Wrap(err, "Failed opening Put request")
 	}
+	req.Header.Set("Content-Range", fmt.Sprintf("%d-%d", 0, size))
 	putResp, err := client.Do(req)
 	if err != nil {
 		return "", -1, errors.Wrapf(err, "Failed putting request %v", req)
 	}
 	defer putResp.Body.Close()
-	if putResp.StatusCode != 204 {
+	if putResp.StatusCode != 201 {
 		return "", -1, fmt.Errorf("Server returned an error %d", putResp.StatusCode)
 	}
 
-	servDigest, ok := putResp.Header["Digest"]
+	servDigest, ok := putResp.Header["Docker-Content-Digest"]
 	if !ok || len(servDigest) != 1 {
 		return "", -1, fmt.Errorf("Server returned incomplete headers")
 	}
-	Length, ok := putResp.Header["Length"]
+
+	blobLoc, ok := putResp.Header["Location"]
+	if !ok || len(blobLoc) != 1 {
+		return "", -1, fmt.Errorf("Server returned incomplete headers")
+	}
+
+	req, err = http.NewRequest("HEAD", fmt.Sprintf("%s%s", o.url, blobLoc[0]), nil)
+	if err != nil {
+		return "", -1, errors.Wrap(err, "Failed opening Head request")
+	}
+	resp, err = client.Do(req)
+	if err != nil {
+		return "", -1, errors.Wrapf(err, "Failed getting new layer %v", blobLoc[0])
+	}
+
+	Length, ok := resp.Header["Content-Length"]
 	if !ok || len(Length) != 1 {
 		return "", -1, fmt.Errorf("Server returned incomplete headers")
 	}
@@ -230,13 +251,12 @@ func (o *OciRepo) CompleteLayer(path string, stream io.Reader) (digest.Digest, i
 		return "", -1, errors.Wrap(err, "Failed decoding length in response")
 	}
 
-	if servDigest[0] != ourDigest {
+	if servDigest[0] != d.String() {
 		return "", -1, errors.Wrapf(err, "Server calculated digest %s, not our %s", servDigest[0], ourDigest)
 	}
 
 	// TODO ocimotel is returning the wrong thing - the hash,
 	// not the "digest", which is "sha256:hash"
-	d := digest.NewDigestFromEncoded(digest.SHA256, ourDigest)
 
 	return d, length, nil
 }

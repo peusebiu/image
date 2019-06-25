@@ -74,17 +74,17 @@ func (o *ociMotelImageDest) PutBlob(ctx context.Context, stream io.Reader, input
 		}
 	}
 
-	fmt.Printf("calling startlayer\n");
+	fmt.Printf("calling startlayer\n")
 	// Do this as a chunked upload so we can calculate the digest, since
 	// caller is not giving it to us.
 	path, err := o.s.StartLayer()
-	fmt.Printf("callled startlayer and got %s %v\n", path, err);
+	fmt.Printf("callled startlayer and got %s %v\n", path, err)
 	if err != nil {
 		return types.BlobInfo{}, err
 	}
-	digest, size, err := o.s.CompleteLayer(path, stream)
+	digest, size, err := o.s.CompleteLayer(path, stream, inputInfo.Size)
 	fmt.Printf("callled completelayer and got %v %d %v\n", digest, size, err)
-	return types.BlobInfo{ Digest: digest, Size: size}, err
+	return types.BlobInfo{Digest: digest, Size: size}, err
 }
 
 // HasThreadSafePutBlob indicates whether PutBlob can be executed concurrently.
