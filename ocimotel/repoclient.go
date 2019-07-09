@@ -184,36 +184,50 @@ func (o *OciRepo) StartLayer() (string, error) {
 // @path is the uuid upload path returned by the server to our Post request.
 // @stream is the data source for the layer.
 // Return the digest and size of the layer that was uploaded.
-func (o *OciRepo) CompleteLayer(path string, stream io.Reader, size int64) (digest.Digest, int64, error) {
+func (o *OciRepo) CompleteLayer(path string, stream io.Reader) (digest.Digest, int64, error) {
 	uri := fmt.Sprintf("%s%s", o.url, path)
-	// using "chunked" upload
 	client := &http.Client{}
 	digester := sha256.New()
 	hashReader := io.TeeReader(stream, digester)
-	req, err := http.NewRequest("PATCH", uri, hashReader)
-	if err != nil {
-		return "", -1, errors.Wrap(err, "Failed opening Patch request")
-	}
-	req.ContentLength = size
-	req.Header.Set("Content-Type", "application/octet-stream")
-	req.Header.Set("Content-Range", fmt.Sprintf("%d-%d", 0, size))
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", -1, errors.Wrapf(err, "Failed posting request %v", req)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 202 {
-		return "", -1, fmt.Errorf("Server returned an error %d", resp.StatusCode)
+	// using "chunked" upload
+	count := int64(0)
+	for {
+		const maxSize = 10 * 1024 * 1024
+		var buf bytes.Buffer
+		size, err := io.CopyN(&buf, hashReader, maxSize)
+		if size == 0 {
+			if err != io.EOF {
+				return "", -1, errors.Wrapf(err, "Failed to copy stream")
+			}
+			break
+		}
+		req, err := http.NewRequest("PATCH", uri, &buf)
+		if err != nil {
+			return "", -1, errors.Wrap(err, "Failed opening Patch request")
+		}
+
+		req.ContentLength = size
+		req.Header.Set("Content-Type", "application/octet-stream")
+		req.Header.Set("Content-Range", fmt.Sprintf("%d-%d", count, count+size))
+		resp, err := client.Do(req)
+		if err != nil {
+			return "", -1, errors.Wrapf(err, "Failed posting request %v", req)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 202 {
+			return "", -1, fmt.Errorf("Server returned an error %d", resp.StatusCode)
+		}
+		count += size
 	}
 
 	ourDigest := fmt.Sprintf("%x", digester.Sum(nil))
 	d := digest.NewDigestFromEncoded(digest.SHA256, ourDigest)
 	uri = fmt.Sprintf("%s%s?digest=%s", o.url, path, d.String())
-	req, err = http.NewRequest("PUT", uri, nil)
+	req, err := http.NewRequest("PUT", uri, nil)
 	if err != nil {
 		return "", -1, errors.Wrap(err, "Failed opening Put request")
 	}
-	req.Header.Set("Content-Range", fmt.Sprintf("%d-%d", 0, size))
+	req.Header.Set("Content-Range", fmt.Sprintf("%d-%d", 0, count))
 	putResp, err := client.Do(req)
 	if err != nil {
 		return "", -1, errors.Wrapf(err, "Failed putting request %v", req)
@@ -237,7 +251,7 @@ func (o *OciRepo) CompleteLayer(path string, stream io.Reader, size int64) (dige
 	if err != nil {
 		return "", -1, errors.Wrap(err, "Failed opening Head request")
 	}
-	resp, err = client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", -1, errors.Wrapf(err, "Failed getting new layer %v", blobLoc[0])
 	}

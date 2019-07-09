@@ -82,7 +82,7 @@ func (o *ociMotelImageDest) PutBlob(ctx context.Context, stream io.Reader, input
 	if err != nil {
 		return types.BlobInfo{}, err
 	}
-	digest, size, err := o.s.CompleteLayer(path, stream, inputInfo.Size)
+	digest, size, err := o.s.CompleteLayer(path, stream)
 	fmt.Printf("callled completelayer and got %v %d %v\n", digest, size, err)
 	return types.BlobInfo{Digest: digest, Size: size}, err
 }
