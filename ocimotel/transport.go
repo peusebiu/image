@@ -136,7 +136,7 @@ func (ref ociMotelReference) NewImage(ctx context.Context, sys *types.SystemCont
 }
 
 func (ref ociMotelReference) NewImageSource(ctx context.Context, sys *types.SystemContext) (types.ImageSource, error) {
-	s, err := NewOciRepo(&ref)
+	s, err := NewOciRepo(&ref, sys)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed connecting to server")
 	}
@@ -147,7 +147,7 @@ func (ref ociMotelReference) NewImageSource(ctx context.Context, sys *types.Syst
 }
 
 func (ref ociMotelReference) NewImageDestination(ctx context.Context, sys *types.SystemContext) (types.ImageDestination, error) {
-	s, err := NewOciRepo(&ref)
+	s, err := NewOciRepo(&ref, sys)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed connecting to server")
 	}
@@ -158,7 +158,7 @@ func (ref ociMotelReference) NewImageDestination(ctx context.Context, sys *types
 }
 
 func (ref ociMotelReference) DeleteImage(ctx context.Context, sys *types.SystemContext) error {
-	s, err := NewOciRepo(&ref)
+	s, err := NewOciRepo(&ref, sys)
 	if err != nil {
 		return errors.Wrap(err, "Failed connecting to server")
 	}
