@@ -44,6 +44,11 @@ func NewOciRepo(ref *zotReference, sys *types.SystemContext) (r OciRepo, err err
 	}
 
 	insecureSkipVerify := (sys.DockerInsecureSkipTLSVerify == types.OptionalBoolTrue)
+
+	if sys == nil {
+		return nil, fmt.Errorf("nil systemcontext")
+	}
+
 	tlsClientConfig := &tls.Config{
 		MinVersion:               tls.VersionTLS10,
 		PreferServerCipherSuites: true,
@@ -65,6 +70,7 @@ func NewOciRepo(ref *zotReference, sys *types.SystemContext) (r OciRepo, err err
 		a := sys.DockerAuthConfig
 		creds = base64.StdEncoding.EncodeToString([]byte(a.Username + ":" + a.Password))
 	}
+
 	r = OciRepo{ref: ref, authCreds: creds, client: client}
 
 	ping := func(scheme string) error {
