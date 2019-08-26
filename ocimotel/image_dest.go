@@ -38,7 +38,7 @@ func (o *ociMotelImageDest) SupportsSignatures(ctx context.Context) error {
 }
 
 func (o *ociMotelImageDest) DesiredLayerCompression() types.LayerCompression {
-	return types.Compress
+	return types.PreserveOriginal
 }
 
 func (o *ociMotelImageDest) AcceptsForeignLayerURLs() bool {
