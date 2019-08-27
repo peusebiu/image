@@ -11,12 +11,15 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/containers/image/pkg/tlsclientconfig"
 	"github.com/containers/image/types"
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+
 	"github.com/pkg/errors"
 )
 
@@ -30,23 +33,31 @@ type OciRepo struct {
 func NewOciRepo(ref *ociMotelReference, sys *types.SystemContext) (r OciRepo, err error) {
 	server := "127.0.0.1"
 	port := "8080"
+	hostName := ""
 	if ref.server != "" {
 		server = ref.server
+		hostName = server
 	}
 	if ref.port != -1 {
 		port = fmt.Sprintf("%d", ref.port)
+		hostName += ":" + port
 	}
 
 	insecureSkipVerify := (sys.DockerInsecureSkipTLSVerify == types.OptionalBoolTrue)
 	tlsClientConfig := &tls.Config{
-		InsecureSkipVerify: insecureSkipVerify,
+		MinVersion:               tls.VersionTLS10,
+		PreferServerCipherSuites: true,
+		InsecureSkipVerify:       insecureSkipVerify,
 	}
 
-	if sys.DockerCertPath != "" {
-		if err := tlsclientconfig.SetupCertificates(sys.DockerCertPath, tlsClientConfig); err != nil {
-			return r, err
-		}
+	certDir, err := ociCertDir(sys, hostName)
+	if err != nil {
+		return r, err
 	}
+	if err := tlsclientconfig.SetupCertificates(certDir, tlsClientConfig); err != nil {
+		return r, err
+	}
+
 	transport := &http.Transport{TLSClientConfig: tlsClientConfig}
 	client := &http.Client{Transport: transport}
 	creds := ""
@@ -357,4 +368,43 @@ func (o *OciRepo) CompleteLayer(path string, stream io.Reader) (digest.Digest, i
 	// not the "digest", which is "sha256:hash"
 
 	return d, length, nil
+}
+
+// ociCertDir returns a path to a directory to be consumed by tlsclientconfig.SetupCertificates() depending on ctx and hostPort.
+func ociCertDir(sys *types.SystemContext, hostPort string) (string, error) {
+	if sys != nil && sys.DockerCertPath != "" {
+		return sys.DockerCertPath, nil
+	}
+	if sys != nil && sys.DockerPerHostCertDirPath != "" {
+		return filepath.Join(sys.DockerPerHostCertDirPath, hostPort), nil
+	}
+
+	var (
+		hostCertDir               string
+		fullCertDirPath           string
+		systemPerHostCertDirPaths = [1]string{"/etc/containers/certs.d"}
+	)
+	for _, systemPerHostCertDirPath := range systemPerHostCertDirPaths {
+		if sys != nil && sys.RootForImplicitAbsolutePaths != "" {
+			hostCertDir = filepath.Join(sys.RootForImplicitAbsolutePaths, systemPerHostCertDirPath)
+		} else {
+			hostCertDir = systemPerHostCertDirPath
+		}
+
+		fullCertDirPath = filepath.Join(hostCertDir, hostPort)
+		_, err := os.Stat(fullCertDirPath)
+		if err == nil {
+			break
+		}
+		if os.IsNotExist(err) {
+			continue
+		}
+		if os.IsPermission(err) {
+			continue
+		}
+		if err != nil {
+			return "", err
+		}
+	}
+	return fullCertDirPath, nil
 }
