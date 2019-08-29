@@ -104,14 +104,14 @@ func (o *OciRepo) GetManifest() ([]byte, *ispec.Manifest, error) {
 	uri.Path = fmt.Sprintf("/v2/%s/manifests/%s", name, tag)
 	req, err := http.NewRequest("GET", uri.String(), nil)
 	if err != nil {
-		return body, m, errors.Wrapf(err, "Couldn't create DELETE request for %s", uri)
+		return body, m, errors.Wrapf(err, "Couldn't create DELETE request for %v", uri)
 	}
 	if o.authCreds != "" {
 		req.Header.Add("Authorization", "Basic "+o.authCreds)
 	}
 	resp, err := o.client.Do(req)
 	if err != nil {
-		return body, m, errors.Wrapf(err, "Error getting manifest %s %s from %s", name, tag, o.url)
+		return body, m, errors.Wrapf(err, "Error getting manifest %s %s from %v", name, tag, o.url)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
@@ -135,7 +135,7 @@ func (o *OciRepo) RemoveManifest() error {
 	uri.Path = fmt.Sprintf("/v2/%s/manifests/%s", name, tag)
 	req, err := http.NewRequest("DELETE", uri.String(), nil)
 	if err != nil {
-		return errors.Wrapf(err, "Couldn't create DELETE request for %s", uri)
+		return errors.Wrapf(err, "Couldn't create DELETE request for %v", uri)
 	}
 	if o.authCreds != "" {
 		req.Header.Add("Authorization", "Basic "+o.authCreds)
@@ -158,7 +158,7 @@ func (o *OciRepo) PutManifest(body []byte) error {
 
 	req, err := http.NewRequest("PUT", uri.String(), bytes.NewReader(body))
 	if err != nil {
-		return errors.Wrapf(err, "Couldn't create PUT request for %s", uri)
+		return errors.Wrapf(err, "Couldn't create PUT request for %v", uri)
 	}
 	if o.authCreds != "" {
 		req.Header.Add("Authorization", "Basic "+o.authCreds)
@@ -202,7 +202,7 @@ func (o *OciRepo) GetLayer(ldigest string) (io.ReadCloser, int64, error) {
 	uri.Path = fmt.Sprintf("/v2/%s/blobs/%s", name, ldigest)
 	req, err := http.NewRequest("GET", uri.String(), nil)
 	if err != nil {
-		return nil, -1, errors.Wrapf(err, "Couldn't create GET request for %s", uri)
+		return nil, -1, errors.Wrapf(err, "Couldn't create GET request for %v", uri)
 	}
 	if o.authCreds != "" {
 		req.Header.Add("Authorization", "Basic "+o.authCreds)
