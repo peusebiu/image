@@ -1,4 +1,4 @@
-package ocimotel
+package zot
 
 import (
 	"context"
@@ -17,12 +17,12 @@ func init() {
 	transports.Register(Transport)
 }
 
-var Transport = ociMotelTransport{}
+var Transport = zotTransport{}
 
-type ociMotelTransport struct{}
+type zotTransport struct{}
 
-func (o ociMotelTransport) Name() string {
-	return "ocimotel"
+func (o zotTransport) Name() string {
+	return "zot"
 }
 
 func splitReference(ref string) (fullname, server string, port int, err error) {
@@ -55,17 +55,17 @@ func splitReference(ref string) (fullname, server string, port int, err error) {
 
 // NOTE - the transport interface is defined in types/types.go.
 // Valid uris are:
-//    ocimotel:///name1/name2/tag
-//    ocimotel://server/name1/name2/name3/tag
+//    zot:///name1/name2/tag
+//    zot://server/name1/name2/name3/tag
 // The tag can be separated by either / or :
-//    ocimotel://server:port/name1/name2/name3/tag
-//    ocimotel://server:port/name1/name2/name3:tag
+//    zot://server:port/name1/name2/name3/tag
+//    zot://server:port/name1/name2/name3:tag
 // So the reference passed in here would be e.g.
 //    ///name1/name2/tag
 //    //server:port/name1/name2/tag
-func (s ociMotelTransport) ParseReference(reference string) (types.ImageReference, error) {
+func (s zotTransport) ParseReference(reference string) (types.ImageReference, error) {
 	if !strings.HasPrefix(reference, "//") {
-		return nil, errors.Errorf("ocimotel: image reference %s does not start with //", reference)
+		return nil, errors.Errorf("zot: image reference %s does not start with //", reference)
 	}
 	fields := strings.Split(reference, "/")
 	fullname, server, port, err := splitReference(reference[2:])
@@ -82,7 +82,7 @@ func (s ociMotelTransport) ParseReference(reference string) (types.ImageReferenc
 	name = fields[0]
 	tag = fields[1]
 
-	return ociMotelReference{
+	return zotReference{
 		server:   server,
 		port:     port,
 		fullname: fullname,
@@ -91,11 +91,11 @@ func (s ociMotelTransport) ParseReference(reference string) (types.ImageReferenc
 	}, nil
 }
 
-func (s ociMotelTransport) ValidatePolicyConfigurationScope(scope string) error {
+func (s zotTransport) ValidatePolicyConfigurationScope(scope string) error {
 	return nil
 }
 
-type ociMotelReference struct {
+type zotReference struct {
 	server   string
 	port     int
 	fullname string
@@ -103,11 +103,11 @@ type ociMotelReference struct {
 	tag      string
 }
 
-func (ref ociMotelReference) Transport() types.ImageTransport {
+func (ref zotReference) Transport() types.ImageTransport {
 	return Transport
 }
 
-func (ref ociMotelReference) StringWithinTransport() string {
+func (ref zotReference) StringWithinTransport() string {
 	port := ""
 	if ref.port != -1 {
 		port = fmt.Sprintf("%d:", ref.port)
@@ -115,19 +115,19 @@ func (ref ociMotelReference) StringWithinTransport() string {
 	return fmt.Sprintf("//%s:%s%s", ref.server, port, ref.fullname)
 }
 
-func (ref ociMotelReference) DockerReference() reference.Named {
+func (ref zotReference) DockerReference() reference.Named {
 	return nil
 }
 
-func (ref ociMotelReference) PolicyConfigurationIdentity() string {
+func (ref zotReference) PolicyConfigurationIdentity() string {
 	return ref.StringWithinTransport()
 }
 
-func (ref ociMotelReference) PolicyConfigurationNamespaces() []string {
+func (ref zotReference) PolicyConfigurationNamespaces() []string {
 	return []string{}
 }
 
-func (ref ociMotelReference) NewImage(ctx context.Context, sys *types.SystemContext) (types.ImageCloser, error) {
+func (ref zotReference) NewImage(ctx context.Context, sys *types.SystemContext) (types.ImageCloser, error) {
 	src, err := ref.NewImageSource(ctx, sys)
 	if err != nil {
 		return nil, err
@@ -135,29 +135,29 @@ func (ref ociMotelReference) NewImage(ctx context.Context, sys *types.SystemCont
 	return image.FromSource(ctx, sys, src)
 }
 
-func (ref ociMotelReference) NewImageSource(ctx context.Context, sys *types.SystemContext) (types.ImageSource, error) {
+func (ref zotReference) NewImageSource(ctx context.Context, sys *types.SystemContext) (types.ImageSource, error) {
 	s, err := NewOciRepo(&ref, sys)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed connecting to server")
 	}
-	return &ociMotelImageSource{
+	return &zotImageSource{
 		ref: ref,
 		s:   &s,
 	}, nil
 }
 
-func (ref ociMotelReference) NewImageDestination(ctx context.Context, sys *types.SystemContext) (types.ImageDestination, error) {
+func (ref zotReference) NewImageDestination(ctx context.Context, sys *types.SystemContext) (types.ImageDestination, error) {
 	s, err := NewOciRepo(&ref, sys)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed connecting to server")
 	}
-	return &ociMotelImageDest{
+	return &zotImageDest{
 		ref: ref,
 		s:   &s,
 	}, nil
 }
 
-func (ref ociMotelReference) DeleteImage(ctx context.Context, sys *types.SystemContext) error {
+func (ref zotReference) DeleteImage(ctx context.Context, sys *types.SystemContext) error {
 	s, err := NewOciRepo(&ref, sys)
 	if err != nil {
 		return errors.Wrap(err, "Failed connecting to server")

@@ -1,4 +1,4 @@
-package ocimotel
+package zot
 
 import (
 	"bytes"
@@ -25,12 +25,12 @@ import (
 
 type OciRepo struct {
 	url       url.URL
-	ref       *ociMotelReference
+	ref       *zotReference
 	authCreds string
 	client    *http.Client
 }
 
-func NewOciRepo(ref *ociMotelReference, sys *types.SystemContext) (r OciRepo, err error) {
+func NewOciRepo(ref *zotReference, sys *types.SystemContext) (r OciRepo, err error) {
 	server := "127.0.0.1"
 	port := "8080"
 	hostName := ""
@@ -364,7 +364,7 @@ func (o *OciRepo) CompleteLayer(path string, stream io.Reader) (digest.Digest, i
 		return "", -1, errors.Wrapf(err, "Server calculated digest %s, not our %s", servDigest[0], ourDigest)
 	}
 
-	// TODO ocimotel is returning the wrong thing - the hash,
+	// TODO zot is returning the wrong thing - the hash,
 	// not the "digest", which is "sha256:hash"
 
 	return d, length, nil

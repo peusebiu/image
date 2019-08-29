@@ -1,4 +1,4 @@
-package ocimotel
+package zot
 
 import (
 	"context"
@@ -13,22 +13,22 @@ import (
 
 // NOTE - the ImageSource interface is defined and commented in types.go
 
-type ociMotelImageSource struct {
+type zotImageSource struct {
 	s              *OciRepo
-	ref            ociMotelReference
+	ref            zotReference
 	manifest       *ispec.Manifest
 	cachedManifest []byte
 }
 
-func (o *ociMotelImageSource) Reference() types.ImageReference {
+func (o *zotImageSource) Reference() types.ImageReference {
 	return o.ref
 }
 
-func (o *ociMotelImageSource) Close() error {
+func (o *zotImageSource) Close() error {
 	return nil
 }
 
-func (o *ociMotelImageSource) GetManifest(ctx context.Context, instanceDigest *digest.Digest) ([]byte, string, error) {
+func (o *zotImageSource) GetManifest(ctx context.Context, instanceDigest *digest.Digest) ([]byte, string, error) {
 	if instanceDigest != nil {
 		return nil, "", fmt.Errorf("GetManifest with instanceDigest is not implemented")
 	}
@@ -43,19 +43,19 @@ func (o *ociMotelImageSource) GetManifest(ctx context.Context, instanceDigest *d
 	return o.cachedManifest, ispec.MediaTypeImageManifest, nil
 }
 
-func (o *ociMotelImageSource) GetBlob(ctx context.Context, info types.BlobInfo, cache types.BlobInfoCache) (io.ReadCloser, int64, error) {
+func (o *zotImageSource) GetBlob(ctx context.Context, info types.BlobInfo, cache types.BlobInfoCache) (io.ReadCloser, int64, error) {
 	digest := info.Digest.String()
 	return o.s.GetLayer(digest)
 }
 
-func (o *ociMotelImageSource) HasThreadSafeGetBlob() bool {
+func (o *zotImageSource) HasThreadSafeGetBlob() bool {
 	return true
 }
 
-func (o *ociMotelImageSource) GetSignatures(ctx context.Context, instanceDigest *digest.Digest) ([][]byte, error) {
+func (o *zotImageSource) GetSignatures(ctx context.Context, instanceDigest *digest.Digest) ([][]byte, error) {
 	return [][]byte{}, nil // TODO
 }
 
-func (o *ociMotelImageSource) LayerInfosForCopy(ctx context.Context) ([]types.BlobInfo, error) {
+func (o *zotImageSource) LayerInfosForCopy(ctx context.Context) ([]types.BlobInfo, error) {
 	return nil, nil
 }

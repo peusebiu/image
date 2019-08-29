@@ -1,4 +1,4 @@
-package ocimotel
+package zot
 
 import (
 	"context"
@@ -13,43 +13,43 @@ import (
 
 // NOTE - the ImageDestination interface is defined in types.go
 
-type ociMotelImageDest struct {
+type zotImageDest struct {
 	s        *OciRepo
-	ref      ociMotelReference
+	ref      zotReference
 	manifest *ispec.Manifest
 }
 
-func (o *ociMotelImageDest) Reference() types.ImageReference {
+func (o *zotImageDest) Reference() types.ImageReference {
 	return o.ref
 }
 
-func (o *ociMotelImageDest) Close() error {
+func (o *zotImageDest) Close() error {
 	return nil
 }
 
-func (o *ociMotelImageDest) SupportedManifestMIMETypes() []string {
+func (o *zotImageDest) SupportedManifestMIMETypes() []string {
 	return []string{
 		ispec.MediaTypeImageManifest,
 	}
 }
 
-func (o *ociMotelImageDest) SupportsSignatures(ctx context.Context) error {
+func (o *zotImageDest) SupportsSignatures(ctx context.Context) error {
 	return nil
 }
 
-func (o *ociMotelImageDest) DesiredLayerCompression() types.LayerCompression {
+func (o *zotImageDest) DesiredLayerCompression() types.LayerCompression {
 	return types.PreserveOriginal
 }
 
-func (o *ociMotelImageDest) AcceptsForeignLayerURLs() bool {
+func (o *zotImageDest) AcceptsForeignLayerURLs() bool {
 	return true
 }
 
-func (o *ociMotelImageDest) MustMatchRuntimeOS() bool {
+func (o *zotImageDest) MustMatchRuntimeOS() bool {
 	return false
 }
 
-func (o *ociMotelImageDest) IgnoresEmbeddedDockerReference() bool {
+func (o *zotImageDest) IgnoresEmbeddedDockerReference() bool {
 	// Return value does not make a difference if Reference().DockerReference()
 	// is nil.
 	return true
@@ -63,7 +63,7 @@ func (o *ociMotelImageDest) IgnoresEmbeddedDockerReference() bool {
 // WARNING: The contents of stream are being verified on the fly.  Until stream.Read() returns io.EOF, the contents of the data SHOULD NOT be available
 // to any other readers for download using the supplied digest.
 // If stream.Read() at any time, ESPECIALLY at end of input, returns an error, PutBlob MUST 1) fail, and 2) delete any data stored so far.
-func (o *ociMotelImageDest) PutBlob(ctx context.Context, stream io.Reader, inputInfo types.BlobInfo, cache types.BlobInfoCache, isConfig bool) (types.BlobInfo, error) {
+func (o *zotImageDest) PutBlob(ctx context.Context, stream io.Reader, inputInfo types.BlobInfo, cache types.BlobInfoCache, isConfig bool) (types.BlobInfo, error) {
 	if inputInfo.Digest.String() != "" {
 		ok, info, err := o.TryReusingBlob(ctx, inputInfo, none.NoCache, false)
 		if err != nil {
@@ -88,11 +88,11 @@ func (o *ociMotelImageDest) PutBlob(ctx context.Context, stream io.Reader, input
 }
 
 // HasThreadSafePutBlob indicates whether PutBlob can be executed concurrently.
-func (o *ociMotelImageDest) HasThreadSafePutBlob() bool {
+func (o *zotImageDest) HasThreadSafePutBlob() bool {
 	return true
 }
 
-func (o *ociMotelImageDest) TryReusingBlob(ctx context.Context, info types.BlobInfo, cache types.BlobInfoCache, canSubstitute bool) (bool, types.BlobInfo, error) {
+func (o *zotImageDest) TryReusingBlob(ctx context.Context, info types.BlobInfo, cache types.BlobInfoCache, canSubstitute bool) (bool, types.BlobInfo, error) {
 	if info.Digest == "" {
 		return false, types.BlobInfo{}, errors.Errorf(`"Can not check for a blob with unknown digest`)
 	}
@@ -102,14 +102,14 @@ func (o *ociMotelImageDest) TryReusingBlob(ctx context.Context, info types.BlobI
 	return false, types.BlobInfo{}, nil
 }
 
-func (o *ociMotelImageDest) PutManifest(ctx context.Context, m []byte) error {
+func (o *zotImageDest) PutManifest(ctx context.Context, m []byte) error {
 	return o.s.PutManifest(m)
 }
 
-func (o *ociMotelImageDest) PutSignatures(ctx context.Context, signatures [][]byte) error {
+func (o *zotImageDest) PutSignatures(ctx context.Context, signatures [][]byte) error {
 	return nil // TODO
 }
 
-func (o *ociMotelImageDest) Commit(ctx context.Context) error {
+func (o *zotImageDest) Commit(ctx context.Context) error {
 	return nil
 }
