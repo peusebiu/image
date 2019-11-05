@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/containers/image/pkg/docker/config"
 	"github.com/containers/image/pkg/tlsclientconfig"
 	"github.com/containers/image/types"
 	"github.com/opencontainers/go-digest"
@@ -64,9 +65,16 @@ func NewOciRepo(ref *zotReference, sys *types.SystemContext) (r OciRepo, err err
 	transport := &http.Transport{TLSClientConfig: tlsClientConfig}
 	client := &http.Client{Transport: transport}
 	creds := ""
-	if sys != nil && sys.DockerAuthConfig != nil {
-		a := sys.DockerAuthConfig
-		creds = base64.StdEncoding.EncodeToString([]byte(a.Username + ":" + a.Password))
+	if sys != nil {
+		if sys.DockerAuthConfig != nil {
+			a := sys.DockerAuthConfig
+			creds = base64.StdEncoding.EncodeToString([]byte(a.Username + ":" + a.Password))
+		} else {
+			registry := fmt.Sprintf("%s:%s", server, port)
+			if username, password, err := config.GetAuthentication(sys, registry); err == nil {
+				creds = base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
+			}
+		}
 	}
 
 	r = OciRepo{ref: ref, authCreds: creds, client: client}
