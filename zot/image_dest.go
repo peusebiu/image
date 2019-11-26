@@ -2,13 +2,13 @@ package zot
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	"github.com/containers/image/pkg/blobinfocache/none"
 	"github.com/containers/image/types"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 // NOTE - the ImageDestination interface is defined in types.go
@@ -74,16 +74,17 @@ func (o *zotImageDest) PutBlob(ctx context.Context, stream io.Reader, inputInfo 
 		}
 	}
 
-	fmt.Printf("calling startlayer\n")
 	// Do this as a chunked upload so we can calculate the digest, since
 	// caller is not giving it to us.
 	path, err := o.s.StartLayer()
-	fmt.Printf("callled startlayer and got %s %v\n", path, err)
 	if err != nil {
+		logrus.Errorf("called StartLayer and got path(%s) and error(%v)", path, err)
 		return types.BlobInfo{}, err
 	}
 	digest, size, err := o.s.CompleteLayer(path, stream)
-	fmt.Printf("callled completelayer and got %v %d %v\n", digest, size, err)
+	if err != nil {
+		logrus.Errorf("called CompleteLayer and got digest(%v), path(%s) and error(%v)", digest, path, err)
+	}
 	return types.BlobInfo{Digest: digest, Size: size}, err
 }
 
