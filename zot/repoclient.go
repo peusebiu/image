@@ -15,9 +15,9 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/containers/image/pkg/docker/config"
-	"github.com/containers/image/pkg/tlsclientconfig"
-	"github.com/containers/image/types"
+	"github.com/containers/image/v5/pkg/docker/config"
+	"github.com/containers/image/v5/pkg/tlsclientconfig"
+	"github.com/containers/image/v5/types"
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 

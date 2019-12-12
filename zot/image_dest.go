@@ -4,8 +4,8 @@ import (
 	"context"
 	"io"
 
-	"github.com/containers/image/pkg/blobinfocache/none"
-	"github.com/containers/image/types"
+	"github.com/containers/image/v5/pkg/blobinfocache/none"
+	"github.com/containers/image/v5/types"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
