@@ -111,6 +111,6 @@ func (o *zotImageDest) PutSignatures(ctx context.Context, signatures [][]byte) e
 	return nil // TODO
 }
 
-func (o *zotImageDest) Commit(ctx context.Context) error {
+func (o *zotImageDest) Commit(context.Context, types.UnparsedImage) error {
 	return nil
 }

@@ -56,6 +56,6 @@ func (o *zotImageSource) GetSignatures(ctx context.Context, instanceDigest *dige
 	return [][]byte{}, nil // TODO
 }
 
-func (o *zotImageSource) LayerInfosForCopy(ctx context.Context) ([]types.BlobInfo, error) {
+func (o *zotImageSource) LayerInfosForCopy(ctx context.Context, instanceDigest *digest.Digest) ([]types.BlobInfo, error) {
 	return nil, nil
 }
